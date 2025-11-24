@@ -1,14 +1,19 @@
-
-
-
-from fastapi import APIRouter, Depends, HTTPException, status
-
 from dependencies import get_current_user
-from schemas.items import Item, ItemCreate, ItemResponse, ItemUpdate
+from fastapi import (
+    APIRouter, 
+    Depends, 
+    HTTPException, 
+    status
+)
+from schemas.items import (
+    Item, 
+    ItemCreate, 
+    ItemResponse, 
+    ItemUpdate
+)
 
 
 router = APIRouter(tags=["Items"])
-
 
 db_items = {
     1: {"id": 1, "name": "MacBook", "description": "Mini", "owned_id": 3},
@@ -35,11 +40,13 @@ async def get_items(
         detail="..."
     )
 
+
 @router.get("/my_items")
 async def get_my_items(
     user = Depends(get_current_user)
 ):
     return {id: Item(**db_items[id]) for id in db_items if db_items[id]["owner_id"] == user.id}
+
 
 @router.get("/item/{item_id}")
 async def get_item(
@@ -58,8 +65,8 @@ async def get_item(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="..."
         )
-    
     return ItemResponse(**item)
+
 
 @router.post("/add_item")
 async def add_item(
@@ -74,6 +81,7 @@ async def add_item(
     )
     db_items[new_item.id] = new_item.model_dump()
     return new_item
+
 
 @router.patch("/update_item/{item_id}")
 async def update_item(
@@ -101,6 +109,7 @@ async def update_item(
     db_items[item_id] = item 
     return ItemResponse(**item)
 
+
 @router.delete("/delete_item/{item_id}")
 async def delete_item(
     item_id: int,
@@ -117,6 +126,5 @@ async def delete_item(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="..."
         )
-    
     del db_items[item_id]
     return {id: db_items[id] for id in range(1, len(db_items)+1) if db_items[id]["owner_id"] == user.id}

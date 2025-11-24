@@ -1,19 +1,32 @@
-
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
-from pydantic import EmailStr
-from sqlalchemy import select, update
-from sqlalchemy.ext.asyncio import AsyncSession
 import secrets
+
 from db.database import get_session
 from db.models import User
-from schemas.users import UserLogin, UserRegister, UserUpdate
 from dependencies import get_current_user
-from security import create_access_token, hash_password, verify_password, EXPIRE_ACCESS_TOKEN_MINUTES
-
+from fastapi import (
+    APIRouter, 
+    Depends, 
+    HTTPException, 
+    Request, 
+    Response, 
+    status
+)
+from schemas.users import (
+    UserLogin,
+    UserRegister,
+    UserUpdate
+)
+from security import (
+    create_access_token,
+    hash_password, 
+    verify_password,
+    EXPIRE_ACCESS_TOKEN_MINUTES
+)
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 router = APIRouter(tags=["Authenticate"], prefix="/user")
-
 
 
 @router.post("/register")
@@ -77,6 +90,7 @@ async def login(user: UserLogin, response: Response, request: Request, db: Async
     )
     return {"message": f"Hello, {db_user.username}!"}
     
+    
 @router.patch("/update")
 async def update_user(
     update_data: UserUpdate,
@@ -92,6 +106,7 @@ async def update_user(
         new_email=update_data.new_email,
     )
     
+    
 @router.post("/logout")
 async def logout_user(
     response: Response,
@@ -105,6 +120,7 @@ async def logout_user(
         secure=True
     )
     return {"message": "Logout successfully!"}
+  
     
 @router.delete("/delete")
 async def delete_me(

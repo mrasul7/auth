@@ -1,13 +1,26 @@
-
-from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import EmailStr
-from sqlalchemy import select, desc, asc, update
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from dependencies import get_current_admin, get_current_superadmin
-from schemas.users import UserRegister
 from db.database import get_session
 from db.models import User
+from dependencies import (
+    get_current_admin, 
+    get_current_superadmin
+)
+from fastapi import (
+    APIRouter,
+    Depends, 
+    HTTPException,
+    Query, 
+    status
+)
+from pydantic import EmailStr
+from schemas.users import UserRegister
+from sqlalchemy import (
+    select,
+    desc,
+    asc, 
+    update
+)
+from sqlalchemy.ext.asyncio import AsyncSession
+from typing import Any, Sequence
 
 
 router = APIRouter(tags=["Admin"], prefix="/admin")
@@ -15,22 +28,23 @@ router = APIRouter(tags=["Admin"], prefix="/admin")
 
 @router.post("", description="Create new admin user")
 async def create_admin(
-    admin: UserRegister,
-    superadmin = Depends(get_current_superadmin),
+    user: UserRegister,
     db: AsyncSession = Depends(get_session),
-):
-    result = await db.execute(select(User).where(User.email == admin.email))
+    superadmin = Depends(get_current_superadmin),
+) -> dict[str, str]:
+    result = await db.execute(select(User).where(User.email == user.email))
     if result.scalar_one_or_none():
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="An admin with this email already exists"
         )
-    db_admin = User(**admin.model_dump(), role="admin")
+    db_admin = User(**user.model_dump(), role="admin")
     
     db.add(db_admin)
     await db.commit()
     await db.refresh(db_admin)
     return {"message": f"Admin with email {db_admin.email} successfully created"}
+
 
 @router.post(path="/role", description="You can either grant or revoke the admin role. Roles: admin, user")
 async def change_role(
@@ -38,7 +52,7 @@ async def change_role(
     new_role: str,
     db: AsyncSession = Depends(get_session),
     superadmin = Depends(get_current_superadmin)
-):
+) -> dict[str, Any]:
     if new_role not in ("admin", "user"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -79,8 +93,6 @@ async def change_role(
             "old_role": old_role,
             "new_role": updated_user.role}
     
-    
-    
 
 @router.get("/users", description="Get users list with filtering and sorting")
 async def get_all_users(
@@ -95,9 +107,9 @@ async def get_all_users(
         default=None, 
         description='''You must specify the sorting field and, separated by a colon, how to sort(case does not matter).
                        Example:id:desc,username:ASC,is_active:DeSc'''),
+    db: AsyncSession = Depends(get_session),
     admin = Depends(get_current_admin),
-    db: AsyncSession = Depends(get_session)
-):
+) -> Sequence[User]:
     query = select(User)
     
     if limit:
@@ -128,9 +140,9 @@ async def activate_or_deactivate_users(
         default=..., 
         description="Specify id separated by commas or a ranges using -. Example: 1,2,3 or 5-10,13-23"
     ),
-    user = Depends(get_current_admin),
     db: AsyncSession = Depends(get_session),
-):
+    user = Depends(get_current_admin),
+) -> dict[str, str]:
     try:
         if "-" in ids:
             ranges = ids.split(",")
@@ -160,7 +172,6 @@ async def activate_or_deactivate_users(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"An error occurred {e}"
         )
-    
         
     if user.role == "superadmin":
         select_stmt = (

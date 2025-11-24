@@ -1,4 +1,8 @@
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import (
+    BaseModel, 
+    ConfigDict, 
+    EmailStr
+)
     
 
 class UserRegister(BaseModel):
@@ -12,7 +16,6 @@ class UserLogin(BaseModel):
     email: EmailStr
     password: str
 
-    
 
 class UserUpdate(BaseModel):
     new_username: str | None = None 

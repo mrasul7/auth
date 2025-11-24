@@ -1,13 +1,20 @@
-# cli.py
 import asyncio
-import re
 import rich
-import bcrypt
 import typer
+
 from db.database import async_session_maker
 from db.models import User
-from sqlalchemy import select, delete 
-from pydantic import BaseModel, EmailStr, ValidationError
+from pydantic import (
+    BaseModel, 
+    EmailStr, 
+    ValidationError
+)
+from security import hash_password
+from sqlalchemy import (
+    select, 
+    delete
+)
+
 
 class EmailValidate(BaseModel):
     email: EmailStr
@@ -15,15 +22,19 @@ class EmailValidate(BaseModel):
 
 app = typer.Typer()
 
-async def superadmin_create(username, email, password, confirm_password):
+
+async def superadmin_create(
+    username: str, 
+    email: str, 
+    password: str, 
+    confirm_password: str
+) -> None:
     async with async_session_maker() as session:
         try:
             EmailValidate(email=email)
-            
-            hashed_password = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
             db_superadmin = User(
                 username=username,
-                password=hashed_password,
+                password=hash_password(password),
                 email=email,
                 role="superadmin"
             )
@@ -45,8 +56,7 @@ async def superadmin_create(username, email, password, confirm_password):
                 
                 session.add(db_superadmin)
                 await session.commit()
-                rich.print(f"[green][bold]The previous superadmin was removed and a new one was added with {username=} and {email=}[/bold][/green]")
-                
+                rich.print(f"[green][bold]The previous superadmin was removed and a new one was added with {username=} and {email=}[/bold][/green]")             
             
             session.add(db_superadmin)
             await session.commit()
@@ -60,15 +70,16 @@ async def superadmin_create(username, email, password, confirm_password):
         finally:
             await session.close()
 
+
 @app.command()
 def create_superadmin(
     username = typer.Argument(..., help="Username for superadmin: "),
     email: str = typer.Argument(..., help="Email for superadmin: "),
     password = typer.Argument(..., help="Password for superadmin: "),
     confirm_password = typer.Argument(..., help="Confirm password: ")
-):
-    
+) -> None:
     asyncio.run(superadmin_create(username, email, password, confirm_password))
+
 
 if __name__ == "__main__":
     app()

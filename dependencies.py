@@ -1,15 +1,15 @@
-
-import datetime
-from fastapi import Depends, HTTPException, Request, status
-import jwt 
-import bcrypt
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-from config import settings
-from security import verify_token
-
 from db.database import get_session
 from db.models import User
+from fastapi import (
+    Depends, 
+    HTTPException, 
+    Request, 
+    status
+)
+from security import verify_token
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 
 async def get_current_user(
     request: Request,
@@ -40,6 +40,7 @@ async def get_current_user(
             detail="Token invalid"
         )
         
+        
 async def get_current_admin(
     current_user = Depends(get_current_user)
 ):
@@ -49,6 +50,7 @@ async def get_current_admin(
             detail="Not enough rights"
         )
     return current_user
+
 
 async def get_current_superadmin(
     current_user = Depends(get_current_user)

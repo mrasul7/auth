@@ -5,6 +5,20 @@ build/
 dist/
 wheels/
 *.egg-info
+*.pyc
 
-# Virtual environments
-.venv
+# Виртуальное окружение
+.venv/
+venv/
+env/
+.env 
+
+# Файлы IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+
+# UV
+uv.lock
