@@ -32,12 +32,7 @@ async def superadmin_create(
     async with async_session_maker() as session:
         try:
             EmailValidate(email=email)
-            db_superadmin = User(
-                username=username,
-                password=hash_password(password),
-                email=email,
-                role="superadmin"
-            )
+
             if password != confirm_password:
                 rich.print(f"[red][bold]Passwords must be the same! Try again[/bold][/red]")
                 return
@@ -53,14 +48,18 @@ async def superadmin_create(
                 
                 await session.execute(delete(User).where(User.role == "superadmin"))
                 await session.commit()
-                
-                session.add(db_superadmin)
-                await session.commit()
-                rich.print(f"[green][bold]The previous superadmin was removed and a new one was added with {username=} and {email=}[/bold][/green]")             
+        
+                rich.print(f"[green][bold]The previous superadmin was removed[/bold][/green]")             
             
+            db_superadmin = User(
+                username=username,
+                password=hash_password(password),
+                email=email,
+                role="superadmin"
+            )
             session.add(db_superadmin)
             await session.commit()
-            rich.print(f"[green][bold]Superadmin created successfully![/bold][/green]")
+            rich.print(f"[green][bold]Superadmin({username=}, {email=})created successfully![/bold][/green]")
         except ValidationError:
             rich.print(f"[red][bold]Invalid email! Try again![/bold][/red]")
             typer.echo("Invalid email")
