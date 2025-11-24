@@ -1,6 +1,28 @@
-def main():
-    print("Hello from auth!")
+import uvicorn
 
+from contextlib import asynccontextmanager
+from fastapi import FastAPI
+from db.database import engine
+from db.models import Base
+from routers.admin import router as admin_router
+from routers.authentication import router as auth_router 
+from routers.items import router as item_router
+
+
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    async with engine.begin() as connect:
+        await connect.run_sync(Base.metadata.create_all)
+    yield
+    
+
+app = FastAPI(lifespan=lifespan)
+
+app.include_router(admin_router)
+app.include_router(auth_router)
+app.include_router(item_router)
 
 if __name__ == "__main__":
-    main()
+    uvicorn.run("main:app", reload=True)
