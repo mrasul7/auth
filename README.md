@@ -1,13 +1,13 @@
 # В системе имеется 3 роля: superadmin, admin, user
    **superadmin** - пользователь со всеми правами, в которые входят создание админа, изменение роли пользователя, удаление/восстановление(activate/deactivate) пользователя с ролью admin, CRUD операции с items(включая те items, которые принадлежат другим пользователя), а также права, которые есть у admin.
-В системе может быть только 1 superadmin. Для его создания необходимо находясь в директории проекта прописать следующую команду:
-*Linux/MacOS*: python3 cli.py username email password confirm_password
+   В системе может быть только 1 superadmin. Для его создания необходимо находясь в директории проекта прописать следующую команду:
+   *Linux/MacOS*: python3 cli.py username email password confirm_password
+                  uv run cli.py username email password confirm_password (при наличии uv)
+    *Windows*: python cli.py username email password confirm_password
                uv run cli.py username email password confirm_password (при наличии uv)
-*Windows*: python cli.py username email password confirm_password
-           uv run cli.py username email password confirm_password (при наличии uv)
 
    **admin** - пользователь со следующими правами: удаление/восстановление(activate/deactivate) пользователя, возможность получить всех пользователей системы, CRUD операции с items(ТОЛЬКО читать items, которые принадлежат другим пользователям), а также права, которые есть у user.
-В системе может быть несколько пользователей с ролью admin. Создать пользователя с ролью admin или присвоить данную роль пользователю может только superadmin.
+   В системе может быть несколько пользователей с ролью admin. Создать пользователя с ролью admin или присвоить данную роль пользователю может только superadmin.
 
    **user** - пользователь со следующими правами: CRUD операции со своими items, а также изменение информации аккаунта или его удаление.
-Количество user в системе неограниченно. Пользователь создается во время регистрации, где необходимо указать имя, почту и пароль.
+   Количество user в системе неограниченно. Пользователь создается во время регистрации, где необходимо указать имя, почту и пароль.
