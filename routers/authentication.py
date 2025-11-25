@@ -20,7 +20,8 @@ from security import (
     create_access_token,
     hash_password, 
     verify_password,
-    EXPIRE_ACCESS_TOKEN_MINUTES
+    EXPIRE_ACCESS_TOKEN_MINUTES,
+    verify_token
 )
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -30,7 +31,10 @@ router = APIRouter(tags=["Authenticate"], prefix="/user")
 
 
 @router.post("/register")
-async def register(user: UserRegister, db: AsyncSession = Depends(get_session)):
+async def register(
+    user: UserRegister,
+    db: AsyncSession = Depends(get_session)
+) -> dict[str, str]:
     user_exist = await db.execute(select(User).where(User.email == user.email))
     if user_exist.scalar_one_or_none():
         raise HTTPException(
@@ -55,10 +59,27 @@ async def register(user: UserRegister, db: AsyncSession = Depends(get_session)):
 
 
 @router.post("/login")
-async def login(user: UserLogin, response: Response, request: Request, db: AsyncSession = Depends(get_session)):
-    
-    if request.cookies.get("access_token"):
-        return {"message": "You are already logged in"}
+async def login(
+    user: UserLogin, 
+    response: Response, 
+    request: Request,
+    db: AsyncSession = Depends(get_session)
+) -> dict[str, str]:
+    existing_token =  request.cookies.get("access_token")
+    if existing_token:
+        try:
+            payload = verify_token(existing_token)
+            if payload:
+                result = await db.execute(select(User).where(User.email == payload.get("sub")))
+                db_user = result.scalar_one_or_none()
+                if db_user and db_user.is_active:
+                    return {"message": "You are already logged in"}
+        except Exception:
+            response.delete_cookie(
+                key="access_token",
+                httponly=True,
+                secure=True
+            )
     result = await db.execute(select(User).where(User.email == user.email))
     db_user = result.scalar_one_or_none()
     if not db_user:
@@ -111,7 +132,7 @@ async def update_user(
 async def logout_user(
     response: Response,
     request: Request
-):
+) -> dict[str, str]:
     if not request.cookies.get("access_token"):
         return {"message": "You are not authenticated"}
     response.delete_cookie(

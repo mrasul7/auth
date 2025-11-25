@@ -17,6 +17,14 @@ class UserLogin(BaseModel):
     password: str
 
 
+class UserResponse(BaseModel):
+    id: int 
+    username: str 
+    email: EmailStr
+    role: str 
+    is_active: bool
+
+
 class UserUpdate(BaseModel):
     new_username: str | None = None 
     new_email: str | None = None

@@ -12,15 +12,20 @@ from fastapi import (
     status
 )
 from pydantic import EmailStr
-from schemas.users import UserRegister
+from schemas.users import (
+    UserRegister,
+    UserResponse
+)
+from security import hash_password
 from sqlalchemy import (
     select,
     desc,
     asc, 
     update
 )
+from sqlalchemy.orm import load_only
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Any, Sequence
+from typing import Any
 
 
 router = APIRouter(tags=["Admin"], prefix="/admin")
@@ -38,7 +43,12 @@ async def create_admin(
             status_code=status.HTTP_409_CONFLICT,
             detail="An admin with this email already exists"
         )
-    db_admin = User(**user.model_dump(), role="admin")
+    db_admin = User(
+        username=user.username,
+        email=user.email,
+        password=hash_password(user.password),
+        role="admin"
+    )
     
     db.add(db_admin)
     await db.commit()
@@ -66,6 +76,8 @@ async def change_role(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"User with {email=} not found"
         )
+    if data_user.role == new_role:
+        return {"message": "The same role that the user has is transferred"}
     old_role = data_user.role
     
     update_stmt = (
@@ -94,7 +106,7 @@ async def change_role(
             "new_role": updated_user.role}
     
 
-@router.get("/users", description="Get users list with filtering and sorting")
+@router.get("/users", description="Get users list with filtering and sorting", response_model=list[UserResponse])
 async def get_all_users(
     limit: int = Query(None, ge=0),
     offset: int = Query(default=0, ge=0),
@@ -109,28 +121,33 @@ async def get_all_users(
                        Example:id:desc,username:ASC,is_active:DeSc'''),
     db: AsyncSession = Depends(get_session),
     admin = Depends(get_current_admin),
-) -> Sequence[User]:
+):
     query = select(User)
-    
-    if limit:
-        query = query.limit(limit)
-    if offset:
-        query = query.offset(offset)
-    if is_active is True or is_active is False:
-        query = query.where(User.is_active == is_active)
-    if roles:
-       query = query.where(User.role.in_(roles.split(","))) 
-    
-    if sort_by:
-        sort_field = sort_by.split(",")
-        for field in sort_field:
-            field_name, sort_order = field.split(":")
-            
-            column = getattr(User, field_name.lower(), None)
-            if column:
-                query = query.order_by(desc(column) if sort_order.lower() == "desc" else asc(column))
+    try:
+        if limit:
+            query = query.limit(limit)
+        if offset:
+            query = query.offset(offset)
+        if is_active is True or is_active is False:
+            query = query.where(User.is_active == is_active)
+        if roles:
+            query = query.where(User.role.in_(roles.split(","))) 
+        
+        if sort_by:
+            sort_field = sort_by.split(",")
+            for field in sort_field:
+                field_name, sort_order = field.split(":")
                 
-    result = await db.execute(query)
+                column = getattr(User, field_name.lower(), None)
+                if column:
+                    query = query.order_by(desc(column) if sort_order.lower() == "desc" else asc(column))
+                    
+        result = await db.execute(query)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid filtering or sorting data was passed"
+        )
     return result.scalars().all()
 
 @router.patch("/users/status", description="Activate and deactivate one or more users")
@@ -194,9 +211,16 @@ async def activate_or_deactivate_users(
             .values(is_active=active)
         )
     else:
+        result = await db.execute(select(User).where(User.role == "superadmin"))
+        superadmin = result.scalar_one()
+        if superadmin.id in current_ids:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"You cannot deactivate a user with the superadmin(id={superadmin.id}) role."
+            )
         update_stmt = (
             update(User)
-            .where(User.id.in_(current_ids), User.role.not_in(["admin", "superadmin"]), User.id != user.id)
+            .where(User.id.in_(current_ids), User.role.not_in(["admin", "superadmin"]))
             .values(is_active=active)
         )    
     await db.execute(update_stmt)

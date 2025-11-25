@@ -2,8 +2,14 @@ import asyncio
 import rich
 import typer
 
-from db.database import async_session_maker
-from db.models import User
+from db.database import (
+    async_session_maker,
+    engine
+)
+from db.models import (
+    User,
+    Base
+)
 from pydantic import (
     BaseModel, 
     EmailStr, 
@@ -15,6 +21,15 @@ from sqlalchemy import (
     delete
 )
 
+
+async def create_tables_if_not_exist():
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        rich.print("[green][bold]Tables created successfully![/bold][/green]")
+    except Exception as e:
+        rich.print(f"[red][bold]Error creating tables: {e}[/bold][/red]")
+        raise
 
 class EmailValidate(BaseModel):
     email: EmailStr
@@ -31,6 +46,8 @@ async def superadmin_create(
 ) -> None:
     async with async_session_maker() as session:
         try:
+            await create_tables_if_not_exist()
+            
             EmailValidate(email=email)
 
             if password != confirm_password:
@@ -59,7 +76,7 @@ async def superadmin_create(
             )
             session.add(db_superadmin)
             await session.commit()
-            rich.print(f"[green][bold]Superadmin({username=}, {email=})created successfully![/bold][/green]")
+            rich.print(f"[green][bold]Superadmin ({username=}, {email=})  created successfully![/bold][/green]")
         except ValidationError:
             rich.print(f"[red][bold]Invalid email! Try again![/bold][/red]")
             typer.echo("Invalid email")
@@ -82,3 +99,4 @@ def create_superadmin(
 
 if __name__ == "__main__":
     app()
+
